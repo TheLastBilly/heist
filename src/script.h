@@ -35,6 +35,8 @@ struct instruction_t
     char type[SCRIPT_MAX_TEXT_BUFFER];
     char name[SCRIPT_MAX_TEXT_BUFFER];
 
+    char var[4][SCRIPT_MAX_TEXT_BUFFER];
+
     int line;
 
     enum instruction_command_t command;

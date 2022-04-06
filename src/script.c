@@ -104,12 +104,16 @@ script_run_file(const char * file_path)
             inst.command = INSTRUCTION_CREATE;
         else if(sscanf(line_buffer, "create %s %s (%f %f)", inst.type, inst.name, &inst.x, &inst.y) == 4)
             inst.command = INSTRUCTION_CREATE;
-        else if(sscanf(line_buffer, "create %s %s (%f)", inst.type, inst.name, &inst.x) == 3)
+        else if(sscanf(line_buffer, "create %s %s %f", inst.type, inst.name, &inst.t) == 3)
             inst.command = INSTRUCTION_CREATE;
         else if(sscanf(line_buffer, "create %s %s", inst.type, inst.name) == 2)
             inst.command = INSTRUCTION_CREATE;
 
         else if(sscanf(line_buffer, "color %s (%f %f %f)", inst.name, &inst.x, &inst.y, &inst.z) == 4)
+            inst.command = INSTRUCTION_COLOR;
+
+        // Same but take variable names as arguments
+        else if(sscanf(line_buffer, "color %s ( %s %s %s )", inst.name, inst.var[0], inst.var[1], inst.var[2]) == 4)
             inst.command = INSTRUCTION_COLOR;
         
         else if(sscanf(line_buffer, "load %s %s", inst.type, inst.name) == 2)
@@ -117,9 +121,15 @@ script_run_file(const char * file_path)
         
         else if(sscanf(line_buffer, "translate %s (%f %f %f)", inst.name, &inst.x, &inst.y, &inst.z) == 4)
             inst.command = INSTRUCTION_TRANSLATE;
-        else if(sscanf(line_buffer, "rotate %s (%f %f %f %f)", inst.name, &inst.t, &inst.x, &inst.y, &inst.z) == 5)
+        else if(sscanf(line_buffer, "rotate %s (%f %f %f %f)", inst.name, &inst.x, &inst.y, &inst.z, &inst.t) == 5)
             inst.command = INSTRUCTION_ROTATE;
         
+        // Same but take variable names as arguments
+        else if(sscanf(line_buffer, "translate %s (%s %s %s)", inst.name, inst.var[0], inst.var[1], inst.var[2]) == 4)
+            inst.command = INSTRUCTION_TRANSLATE;
+        else if(sscanf(line_buffer, "rotate %s (%s %s %s %s)", inst.name, inst.var[0], inst.var[1], inst.var[2], inst.var[3]) == 5)
+            inst.command = INSTRUCTION_ROTATE;
+
         else if(sscanf(line_buffer, "assign %s %f", inst.name, &inst.t) == 2)
             inst.command = INSTRUCTION_ASSIGN;
         else if(sscanf(line_buffer, "add %s %f", inst.name, &inst.t) == 2)
@@ -173,7 +183,7 @@ script_run_file(const char * file_path)
 
     // Set default parameters for objects
     default_gparams.ac = COLOR(1.0f, 1.0f, 1.0f);
-    default_gparams.dc = COLOR(0.0f, 0.0f, 1.0f);
+    default_gparams.dc = COLOR(0.0f, 0.0f, 0.0f);
     default_gparams.sc = COLOR(1.0f, 1.0f, 1.0f);
 
     default_gparams.pc = 100;
@@ -313,13 +323,11 @@ apply_color(char *name, struct color_t *color)
 
     if((i = find_mesh(name)) >= 0)
         mesh_gparams_buffer[i].ac = 
-        mesh_gparams_buffer[i].dc = 
-        mesh_gparams_buffer[i].sc = *color;
+        mesh_gparams_buffer[i].dc = *color;
 
     else if((i = find_object(name)) >= 0)
         object_gparams_buffer[i].ac = 
-        object_gparams_buffer[i].dc = 
-        object_gparams_buffer[i].sc = *color;
+        object_gparams_buffer[i].dc =  *color;
         
     else
         fatal("cannot find object %s", name);
@@ -336,11 +344,26 @@ void run_instruction(struct instruction_t *instruction)
     struct gparams_t *mesh_gparams, *object_gparams;
     struct wavefront_t wf = {0};
 
+    float *values[4] = {&instruction->x, &instruction->y, &instruction->z, &instruction->t};
+
     // And because you can never be too sure...
     char name[SCRIPT_MAX_TEXT_BUFFER + 128] = {0};
 
     mesh_gparams = &mesh_gparams_buffer[mesh_count];
     object_gparams = &object_gparams_buffer[mesh_count];
+
+    for(size_t i = 0; i < 4; i++)
+    {
+        if(strlen(instruction->var[i]) > 0)
+            t = find_variable(instruction->var[i]);
+        else
+            continue;
+        
+        if(t < 0)
+            fatal("cannot find variable %s", instruction->var[i]);
+        
+        *values[i] = variable_buffer[i].value;
+    }
 
     switch (instruction->command)
     {
@@ -352,6 +375,9 @@ void run_instruction(struct instruction_t *instruction)
         {
             if(strcmp(instruction->type, "rectangle") == 0)
             {
+                if(instruction->x == 0 && instruction->y == 0)
+                    wrn("creating rectangle \"%s\" with empty dimensions", instruction->name);
+
                 *mesh_gparams = default_gparams;
 
                 new_rectangle_mesh_wh(instruction->x, instruction->y, &mesh_buffer[mesh_count]);
@@ -365,10 +391,13 @@ void run_instruction(struct instruction_t *instruction)
             
             else if(strcmp(instruction->type, "sphere") == 0)
             {
+                if(instruction->t == 0)
+                    wrn("creating sphere \"%s\" with no radius", instruction->name);
+
                 pv = PV(0.0f, 0.0f, 0.0f);
                 *object_gparams = default_gparams;
 
-                make_sphere(&pv, instruction->x, &object_bufer[object_count]);
+                make_sphere(&pv, instruction->t, &object_bufer[object_count]);
                 object_bufer[object_count].param = (void *)object_gparams;
 
                 object_gparams->name = instruction->name;
@@ -380,7 +409,8 @@ void run_instruction(struct instruction_t *instruction)
             {
                 pv = PV(0.0f, 0.0f, 0.0f);
 
-                is = id = COLOR(instruction->x, instruction->y, instruction->z);
+                is = COLOR(instruction->x, instruction->y, instruction->z);
+                id = scale_color(is, 0.5);
 
                 make_local_light(&pv, &id, &is, &light_buffer[light_count]);
                 light_buffer[light_count].name = instruction->name;
@@ -416,14 +446,14 @@ void run_instruction(struct instruction_t *instruction)
         break;
     
     case INSTRUCTION_TRANSLATE:
-        inf("translating %s by (%f %f %f)", instruction->name, instruction->x, instruction->y, instruction->z);
+        // inf("translating %s by (%f %f %f)", instruction->name, instruction->x, instruction->y, instruction->z);
 
         make_translation_matrix(instruction->x, instruction->y, instruction->z, matrix);
         apply_transform(instruction->name, matrix);
         break;
 
     case INSTRUCTION_ROTATE:
-        inf("rotating camera %s by %f degrees on normal (%f %f %f)", instruction->name, instruction->t, instruction->x, instruction->y, instruction->z);
+        // inf("rotating camera %s by %f degrees on normal (%f %f %f)", instruction->name, instruction->t, instruction->x, instruction->y, instruction->z);
         pv = PV(instruction->x, instruction->y, instruction->z);
         normalize_pv(&pv, &pv);
 
@@ -435,6 +465,8 @@ void run_instruction(struct instruction_t *instruction)
         if(project_name == NULL)
             fatal_na("cannot render shot without a project name");
         
+        inf("taking frame %d", shot_count);
+
         snprintf(name, sizeof(name), "%s_%d.ppm", project_name, shot_count++);
 
         new_framebuffer(height, width, &fb);

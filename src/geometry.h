@@ -79,6 +79,9 @@ struct mesh_t
     struct triangle_t *triangles;
     size_t triangle_count;
     matrix_t transform, inv_transform;
+
+    struct gobject_t bounding_sphere;
+    bool has_bounding_sphere;
 };
 
 const char* matrix_to_str(matrix_t m);

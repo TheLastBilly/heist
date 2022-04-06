@@ -655,10 +655,22 @@ void transform_object(struct gobject_t *g, matrix_t t, struct gobject_t *r)
 void
 new_rectangle_mesh(struct pv_t *a, struct pv_t *b, struct pv_t *c, struct pv_t *d, struct mesh_t *m)
 {
+    float radius = 0.0;
+    struct pv_t p = {0};
+
     new_mesh(m, 2);
     make_triangle(a, b, c, &m->triangles[0]);
     make_triangle(c, d, a, &m->triangles[1]);
     m->triangles[0].single_sided = m->triangles[1].single_sided = false;
+
+    m->has_bounding_sphere = true;
+
+    // substract_pv(b, a, &p);
+    // radius = magnitude_pv(&p)/2;
+    // normalize_pv(&p, &p);
+    // scale_pv(&p, radius, &p);
+    // add_pv(a, &p, &p);
+    // make_sphere(&p, radius, &m->bounding_sphere);
 }
 
 void 

@@ -411,6 +411,13 @@ raytrace(struct ray_t *ray, struct scene_t *scene, struct camera_t *camera, stru
     // Now do all the meshes
     for(i = 0; i < scene->mesh_count; i++)
     {
+        // if(scene->meshes[i]->has_bounding_sphere)
+        // {
+        //     ct = ray_intersect(ray, &scene->meshes[i]->bounding_sphere, &b_info);
+        //     if(ct < 0.0 || ct >= t)
+        //         continue;
+        // }
+
         for(s = 0; s < scene->meshes[i]->triangle_count; s++)
         {
             ct = ray_intersect(ray, &scene->meshes[i]->triangles[s], &b_info);
