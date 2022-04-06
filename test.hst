@@ -1,14 +1,14 @@
 # create/load scene components
 name test_scene
 create light main_light (1 1 1)
-create sphere globe 20.0
+create sphere globe (20.0)
 create rectangle floor (50 50)
 load ./teapot.obj teapot
 
 # Apply transforms to objects
 translate floor (-25 -10 -25)
 translate camera (0 10 10)
-translate teapot (0 10 10)
+translate teapot (0 10 -10)
 rotate camera (45 1 0 0)
 
 # Setup loop

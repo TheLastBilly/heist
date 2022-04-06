@@ -1,0 +1,14 @@
+name sphere_test
+create sphere main (2.0)
+color main (1 0 0)
+
+create light main_light (1 1 1)
+create light second_light (0.5 0.52 0.5)
+
+translate second_light (-10 0 -2)
+translate main_light (10 0 -2)
+
+translate main (0 0 -10)
+translate camera (0 0 5)
+
+render

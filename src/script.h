@@ -19,7 +19,8 @@ enum instruction_command_t
     INSTRUCTION_EQUALS,
     INSTRUCTION_GOTO,
     INSTRUCTION_RENDER,
-    INSTRUCTION_EXIT
+    INSTRUCTION_EXIT,
+    INSTRUCTION_COLOR
 };
 
 struct variable_t
