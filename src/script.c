@@ -124,6 +124,8 @@ script_run_file(const char * file_path)
             inst.command = INSTRUCTION_ASSIGN;
         else if(sscanf(line_buffer, "add %s %f", inst.name, &inst.t) == 2)
             inst.command = INSTRUCTION_ADD;
+        else if(sscanf(line_buffer, "substract %s %f", inst.name, &inst.t) == 2)
+            inst.command = INSTRUCTION_SUB;
         else if(sscanf(line_buffer, "equals %s %f", inst.name, &inst.t) == 2)
             inst.command = INSTRUCTION_EQUALS;
         
@@ -421,6 +423,7 @@ void run_instruction(struct instruction_t *instruction)
         break;
 
     case INSTRUCTION_ROTATE:
+        inf("rotating camera %s by %f degrees on normal (%f %f %f)", instruction->name, instruction->t, instruction->x, instruction->y, instruction->z);
         pv = PV(instruction->x, instruction->y, instruction->z);
         normalize_pv(&pv, &pv);
 
@@ -444,6 +447,47 @@ void run_instruction(struct instruction_t *instruction)
     case INSTRUCTION_COLOR:
         color = COLOR(instruction->x, instruction->y, instruction->z);
         apply_color(instruction->name, &color);
+        break;
+
+    case INSTRUCTION_ASSIGN:
+        t = find_variable(instruction->name);
+        if(t < 0)
+            fatal("cannot find variable \"%s\"", instruction->name);
+
+        variable_buffer[t].value = instruction->t;
+        break;
+    
+    case INSTRUCTION_EQUALS:
+        t = find_variable(instruction->name);
+        if(t < 0)
+            fatal("cannot find variable \"%s\"", instruction->name);
+        if(variable_buffer[t].value != instruction->t)
+            pc += 1;
+        break;
+
+    case INSTRUCTION_ADD:
+        t = find_variable(instruction->name);
+        if(t < 0)
+            fatal("cannot find variable \"%s\"", instruction->name);
+
+        variable_buffer[t].value += instruction->t;
+        break;
+
+    case INSTRUCTION_SUB:
+        t = find_variable(instruction->name);
+        if(t < 0)
+            fatal("cannot find variable \"%s\"", instruction->name);
+
+        variable_buffer[t].value -= instruction->t;
+        break;
+    
+    case INSTRUCTION_GOTO:
+        t = find_tag(instruction->name);
+        if(t < 0)
+            fatal("cannot find tag \"%s\"", instruction->name);
+        
+        pc = t;
+        break;
 
     default:
         break;
